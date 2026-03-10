@@ -79,3 +79,17 @@
 - Правильность определения контейнеров и их взаимодействия
 - Качество Dynamic диаграммы для выбранного сценария
 - Соответствие описания выбранному варианту задания
+
+## Диаграммы
+
+### SystemContext
+
+![SystemContextDiagram](img/SystemContext.svg)
+
+### Container
+
+![ContainerDiagram](img/Container.svg)
+
+### Dynamic (Создание сценария доставки)
+
+![DynamicDiagram](img/Dynamic.svg)
