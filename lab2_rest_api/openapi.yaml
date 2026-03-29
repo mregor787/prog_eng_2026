@@ -1,0 +1,273 @@
+openapi: 3.0.3
+info:
+  title: Delivery Service API
+  version: 1.0.0
+  description: REST API for parcel delivery service
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+
+  /users:
+    post:
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
+        '409':
+          description: Login already exists
+
+    get:
+      summary: Search users by name
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search by mask of first or last name (partial match)
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /users/{login}:
+    get:
+      summary: Get user by login
+      parameters:
+        - name: login
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+
+  /users/{user_id}/parcels:
+    get:
+      summary: Get parcels of a user
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of parcels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Parcel'
+
+  /parcels:
+    post:
+      summary: Create a parcel
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateParcelRequest'
+      responses:
+        '201':
+          description: Parcel created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Parcel'
+        '401':
+          description: Unauthorized
+
+  /deliveries:
+    post:
+      summary: Create a delivery
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDeliveryRequest'
+      responses:
+        '201':
+          description: Delivery created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+        '401':
+          description: Unauthorized
+
+    get:
+      summary: Get deliveries by sender or receiver
+      parameters:
+        - name: sender_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: receiver_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of deliveries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Delivery'
+
+  /auth/register:
+    post:
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '201':
+          description: Registered successfully
+
+  /auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login, password]
+              properties:
+                login:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: JWT token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        login:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    Parcel:
+      type: object
+      properties:
+        id:
+          type: string
+        sender_id:
+          type: string
+        description:
+          type: string
+
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: string
+        sender_id:
+          type: string
+        receiver_id:
+          type: string
+        parcel_id:
+          type: string
+        status:
+          type: string
+
+    CreateUserRequest:
+      type: object
+      required: [login, first_name, last_name]
+      properties:
+        login:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+
+    CreateParcelRequest:
+      type: object
+      required: [sender_id, description]
+      properties:
+        sender_id:
+          type: string
+        description:
+          type: string
+
+    CreateDeliveryRequest:
+      type: object
+      required: [receiver_id, parcel_id]
+      properties:
+        receiver_id:
+          type: string
+        parcel_id:
+          type: string
