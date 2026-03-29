@@ -266,11 +266,8 @@ curl -X POST http://localhost:8080/users \
 
 ## OpenAPI
 
-Файл спецификации:
+Файл спецификации: [openapi.yaml](openapi.yaml)
 
-```
-![openapi.yaml](openapi.yaml)
-```
 
 ## Docker
 
