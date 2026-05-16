@@ -2,6 +2,24 @@
 
 **Выполнил:** Белоусов Е.Л., группа М8О-107СВ-25
 
+## Вариант задания
+
+### #6 Сервис доставки
+Приложение должно содержать следующие данные: 
+- Пользователь (User)
+- Посылка (Parcel)
+- Доставка (Delivery)
+
+Реализовать API: 
+- Создание нового пользователя 
+- Поиск пользователя по логину 
+- Поиск пользователя по маске имя и фамилии 
+- Создание посылки 
+- Получение посылок пользователя 
+- Создание доставки от пользователя к пользователю 
+- Получение информации о доставке по получателю 
+- Получение информации о доставке по отправителю
+
 ## Описание проекта
 
 В ходе данной ЛР был реализован REST API сервис для системы доставки.
@@ -12,33 +30,59 @@
 * создавать и получать посылки
 * создавать и отслеживать доставки между пользователями
 
-Реализация выполнена на языке **C++** с использованием фреймворка **userver**.
+Реализация выполнена на языке **C++** с использованием фреймворка [**userver**](userver.tech).
 
 ## Архитектура
 
-На текущем этапе реализован **монолитный сервис**, включающий:
+Проект реализован в виде набора микросервисов:
 
-* User API
-* Parcel API
-* Delivery API
+* **User Service** - управление пользователями и аутентификация;
+* **Parcel Service** - работа с посылками;
+* **Delivery Service** - создание и получение доставок;
+* **Nginx API Gateway** - точка входа в систему.
 
-Код проекта разделен по модулям:
+Для хранения данных используется **SQLite**.
 
-```
-src/
-  user/
-    handlers/
-    storage/
-    model/
-  parcel/
-    handlers/
-    storage/
-    model/
-  delivery/
-    handlers/
-    storage/
-    model/
-```
+Для аутентификации применяется **JWT (JSON Web Token)**.
+
+## Сущности
+
+| Сущность | Описание |
+|----------|----------|
+| **Пользователь (User)** | Пользователь сервиса. Имеет: логин, пароль (хэш), email, имя, фамилию |
+| **Посылка (Parcel)** | Товар, подлежащий доставке. Имеет: ID отправителя, описание, вес |
+| **Доставка (Delivery)** | Заказ на доставку посылки от отправителя к получателю. Имеет: ID отправителя, ID получателя, ID посылки, статус, стоимость доставки |
+
+## API
+
+| # | Операция | HTTP метод | Endpoint |
+|---|----------|-----------|----------|
+| 1 | Регистрация пользователя | `POST` | `/api/v1/users` |
+| 2 | Логин | `POST` | `/api/v1/auth/login` |
+| 3 | Поиск пользователя по логину | `GET` | `/api/v1/users/{login}` |
+| 4 | Поиск пользователя по маске имени и фамилии | `GET` | `GET /api/v1/users/search?query=john` |
+| 5 | Создание посылки | `POST` | `/api/v1/parcels` |
+| 6 | Получение посылок пользователя по ID | `GET` | `/api/v1/{id}/parcels` |
+| 7 | Создание доставки | `POST` | `/api/v1/deliveries` |
+| 8 | Получение доставок по отправителю | `GET` | `/api/v1/deliveries?sender_id=1` |
+| 9 | Получение доставок по получателю | `GET` | `/api/v1/deliveries?receiver_id=2` |
+
+> Все endpoints, кроме логина и регистрации, требуют JWT-аутентификацию.
+
+## Особенности реализации
+- Асинхронная обработка HTTP-запросов через userver;
+- JWT middleware для защищённых endpoints;
+- SQLite в качестве встроенной базы данных;
+- API Gateway на базе Nginx;
+- DTO-модели для Request/Response;
+- Dockerized deployment;
+- OpenAPI документация.
+
+## OpenAPI и Swagger
+
+OpenAPI спецификация находится в файле: [openapi.yaml](openapi.yaml)
+
+Swagger UI доступен по адресу: http://localhost:8080/swagger/
 
 ## Запуск проекта
 
@@ -60,218 +104,33 @@ docker compose up
 http://localhost:8080
 ```
 
-## Реализованные API endpoints
-
-### User API
-
-#### Создание пользователя
-
-```http
-POST /users
-```
-
-Request:
-
-```json
-{
-  "login": "john",
-  "first_name": "John",
-  "last_name": "Doe"
-}
-```
-
-Response:
-
-```json
-{
-  "id": "123",
-  "login": "john",
-  "first_name": "John",
-  "last_name": "Doe"
-}
-```
-
-#### Получение пользователя по логину
-
-```http
-GET /users/{login}
-```
-
-Response:
-
-```json
-{
-  "id": "123",
-  "login": "john",
-  "first_name": "John",
-  "last_name": "Doe"
-}
-```
-
-#### Поиск пользователей (по маске имени/фамилии)
-
-```http
-GET /users?name=John
-```
-
-Response:
-
-```json
-[
-  {
-    "id": "123",
-    "login": "john",
-    "first_name": "John",
-    "last_name": "Doe"
-  }
-]
-```
-
-### Parcel API
-
-#### Создание посылки
-
-```http
-POST /parcels
-```
-
-Request:
-
-```json
-{
-  "sender_id": "1",
-  "description": "Books"
-}
-```
-
-Response:
-
-```json
-{
-  "id": "10",
-  "sender_id": "1",
-  "description": "Books"
-}
-```
-
-#### Получение посылок пользователя
-
-```http
-GET /parcels?user_id=1
-```
-
-Response:
-
-```json
-[
-  {
-    "id": "10",
-    "sender_id": "1",
-    "description": "Books"
-  }
-]
-```
-
-### Delivery API
-
-#### Создание доставки
-
-```http
-POST /deliveries
-```
-
-Request:
-
-```json
-{
-  "receiver_id": "2",
-  "parcel_id": "10"
-}
-```
-
-Response:
-
-```json
-{
-  "id": "100",
-  "sender_id": "1",
-  "receiver_id": "2",
-  "parcel_id": "10",
-  "status": "created"
-}
-```
-
-#### Получение доставок по отправителю
-
-```http
-GET /deliveries?sender_id=1
-```
-
-Response:
-```json
-[
-  {
-    "id": "100",
-    "sender_id": "1",
-    "receiver_id": "2",
-    "parcel_id": "10",
-    "status": "created"
-  }
-]
-```
-
-#### Получение доставок по получателю
-
-```http
-GET /deliveries?receiver_id=2
-```
-
-Response:
-```json
-[
-  {
-    "id": "100",
-    "sender_id": "1",
-    "receiver_id": "2",
-    "parcel_id": "10",
-    "status": "created"
-  }
-]
-```
-
-## Особенности реализации
-
-* Используется **in-memory хранилище** (std::unordered_map / std::vector)
-* Архитектура построена на **userver components**
-* Каждый **storage** реализован как отдельный компонент
-* Используются DTO (структуры моделей)
-
-## Обработка ошибок
-
-* 404 — ресурс не найден
-* 409 — конфликт (например, пользователь уже существует)
-* 400 — некорректный запрос (частично)
-
 ## Тестирование
 
-Пока используется ручное тестирование через curl.
+Для тестирования использовалась утилита curl.
 
-Пример:
+Пример запроса:
 
 ```bash
-curl -X POST http://localhost:8080/users \
+curl -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
-  -d '{"login":"john","first_name":"John","last_name":"Doe"}'
+  -d '{
+        "login":"egor",
+        "email":"egor@example.com",
+        "first_name":"Egor",
+        "last_name":"Belousov",
+        "password":"qwerty123"
+      }'
 ```
 
-## OpenAPI
+Ответ:
 
-Файл спецификации: [openapi.yaml](openapi.yaml)
-
-
-## Docker
-
-Проект запускается в контейнере:
-
-* используется prebuilt образ userver
-* сборка через CMake внутри контейнера
+```json
+{
+  "id":1,
+  "login":"egor",
+  "email":"egor@example.com",
+  "first_name":"Egor",
+  "last_name":"Belousov",
+  "created_at":"2026-05-16T20:19:04+0000"
+}
+```

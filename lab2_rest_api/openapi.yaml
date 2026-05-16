@@ -8,8 +8,7 @@ servers:
   - url: http://localhost:8080
 
 paths:
-
-  /users:
+  /api/v1/users:
     post:
       summary: Create a new user
       requestBody:
@@ -20,7 +19,7 @@ paths:
               $ref: '#/components/schemas/CreateUserRequest'
       responses:
         '201':
-          description: User created
+          description: User created successfully
           content:
             application/json:
               schema:
@@ -28,30 +27,13 @@ paths:
         '400':
           description: Invalid input
         '409':
-          description: Login already exists
+          description: User already exists
 
-    get:
-      summary: Search users by name
-      parameters:
-        - name: name
-          in: query
-          required: true
-          schema:
-            type: string
-          description: Search by mask of first or last name (partial match)
-      responses:
-        '200':
-          description: List of users
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/User'
-
-  /users/{login}:
+  /api/v1/users/{login}:
     get:
       summary: Get user by login
+      security:
+        - bearerAuth: []
       parameters:
         - name: login
           in: path
@@ -65,29 +47,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
         '404':
           description: User not found
 
-  /users/{user_id}/parcels:
+  /api/v1/auth/login:
+    post:
+      summary: Login user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+
+  /api/v1/users/search:
     get:
-      summary: Get parcels of a user
+      summary: Search users by name/surname mask
+      security:
+        - bearerAuth: []
       parameters:
-        - name: user_id
-          in: path
+        - name: query
+          in: query
           required: true
           schema:
             type: string
       responses:
         '200':
-          description: List of parcels
+          description: User found
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '400':
+          description: Missing or invalid query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+
+  /api/v1/users/{id}/parcels:
+    get:
+      summary: Get parcels of a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Parcels retrieved successfully
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Parcel'
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
 
-  /parcels:
+  /api/v1/parcels:
     post:
       summary: Create a parcel
       security:
@@ -100,7 +136,7 @@ paths:
               $ref: '#/components/schemas/CreateParcelRequest'
       responses:
         '201':
-          description: Parcel created
+          description: Parcel created successfully
           content:
             application/json:
               schema:
@@ -108,7 +144,7 @@ paths:
         '401':
           description: Unauthorized
 
-  /deliveries:
+  /api/v1/deliveries:
     post:
       summary: Create a delivery
       security:
@@ -121,7 +157,7 @@ paths:
               $ref: '#/components/schemas/CreateDeliveryRequest'
       responses:
         '201':
-          description: Delivery created
+          description: Delivery created successfully
           content:
             application/json:
               schema:
@@ -131,74 +167,38 @@ paths:
 
     get:
       summary: Get deliveries by sender or receiver
+      security:
+        - bearerAuth: []
       parameters:
         - name: sender_id
           in: query
           required: false
           schema:
-            type: string
+            type: integer
         - name: receiver_id
           in: query
           required: false
           schema:
-            type: string
+            type: integer
       responses:
         '200':
-          description: List of deliveries
+          description: Deliveries retrieved successfully
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Delivery'
-
-  /auth/register:
-    post:
-      summary: Register user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [login, password]
-              properties:
-                login:
-                  type: string
-                password:
-                  type: string
-      responses:
-        '201':
-          description: Registered successfully
-
-  /auth/login:
-    post:
-      summary: Login user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [login, password]
-              properties:
-                login:
-                  type: string
-                password:
-                  type: string
-      responses:
-        '200':
-          description: JWT token
+        '400':
+          description: Missing or invalid query parameter
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  access_token:
-                    type: string
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
 
 components:
-
   securitySchemes:
     bearerAuth:
       type: http
@@ -206,68 +206,149 @@ components:
       bearerFormat: JWT
 
   schemas:
-
     User:
       type: object
+      required: [login, email, first_name, last_name]
       properties:
         id:
-          type: string
+          type: integer
+          format: int64
+          example: 1
         login:
           type: string
+          example: "mregor"
+        email:
+          type: string
+          format: email
+          example: "mregor@example.com"
         first_name:
           type: string
+          example: "Egor"
         last_name:
           type: string
+          example: "Belousov"
+        created_at:
+          type: string
+          format: date-time
 
     Parcel:
       type: object
+      required: [description, weight]
       properties:
         id:
-          type: string
+          type: integer
+          format: int64
+          example: 1
         sender_id:
-          type: string
+          type: integer
+          format: int64
+          example: 1
         description:
           type: string
+          example: "A computer mouse"
+        weight:
+          type: number
+          format: double
+          example: 100.0
+        created_at:
+          type: string
+          format: date-time
 
     Delivery:
       type: object
+      required: [receiver_id, parcel_id]
       properties:
         id:
-          type: string
+          type: integer
+          format: int64
+          example: 1
         sender_id:
-          type: string
+          type: integer
+          format: int64
+          example: 1
         receiver_id:
-          type: string
+          type: integer
+          format: int64
+          example: 2
         parcel_id:
-          type: string
+          type: integer
+          format: int64
+          example: 1
         status:
           type: string
-
+          example: "CREATED"
+        cost:
+          type: number
+          format: double
+          example: 10.0
+        created_at:
+          type: string
+          format: date-time
+        
     CreateUserRequest:
       type: object
-      required: [login, first_name, last_name]
+      required: [login, email, first_name, last_name, password]
       properties:
         login:
           type: string
+          example: "mregor"
+        email:
+          type: string
+          format: email
+          example: "mregor@example.com"
         first_name:
           type: string
+          example: "Egor"
         last_name:
           type: string
+          example: "Belousov"
+        password:
+          type: string
+          format: password
+          example: "myStrongPass12345"
 
     CreateParcelRequest:
       type: object
-      required: [sender_id, description]
+      required: [description, weight]
       properties:
-        sender_id:
-          type: string
         description:
           type: string
+          example: "A computer mouse"
+        weight:
+          type: number
+          format: double
+          example: 100.0
 
     CreateDeliveryRequest:
       type: object
       required: [receiver_id, parcel_id]
       properties:
         receiver_id:
-          type: string
+          type: integer
+          format: int64
+          example: 1
         parcel_id:
+          type: integer
+          format: int64
+          example: 1
+    
+    AuthToken:
+      type: object
+      properties:
+        token:
           type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        user_id:
+          type: integer
+          format: int64
+          example: 1
+        expires_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Error message"

@@ -1,26 +1,87 @@
-cmake_minimum_required(VERSION 3.15)
-project(delivery_service CXX)
+cmake_minimum_required(VERSION 3.12)
+project(delivery-service CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(userver REQUIRED COMPONENTS core)
 
-add_executable(delivery_service
-    src/main.cpp
-    src/user/storage/user_storage.cpp
-    src/user/handlers/search_users_handler.cpp
-    src/user/handlers/create_user_handler.cpp
-    src/user/handlers/get_user_handler.cpp
-    src/parcel/storage/parcel_storage.cpp
-    src/parcel/handlers/create_parcel_handler.cpp
-    src/parcel/handlers/get_user_parcels_handler.cpp
-    src/delivery/storage/delivery_storage.cpp
-    src/delivery/handlers/create_delivery_handler.cpp
-    src/delivery/handlers/get_deliveries_handler.cpp
+find_package(SQLite3 REQUIRED)
+if(NOT SQLite3_FOUND)
+    message(FATAL_ERROR "SQLite3 not found")
+endif()
+
+add_executable(${PROJECT_NAME}-user
+    src/user/main.cpp
+    src/user/handlers.cpp
+    src/user/create_user_handler.cpp
+    src/user/get_user_handler.cpp
+    src/user/login_user_handler.cpp
+    src/user/search_users_handler.cpp
+    src/common/db.cpp
+    src/common/models.cpp
+    src/auth/jwt_auth_checker.cpp
+    src/auth/jwt_auth_factory.cpp
 )
 
-target_include_directories(delivery_service PRIVATE
+target_include_directories(${PROJECT_NAME}-user PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${SQLITE3_INCLUDE_DIRS}
 )
 
-target_link_libraries(delivery_service userver::core)
+target_link_libraries(${PROJECT_NAME}-user PRIVATE
+    userver::core
+    /usr/lib/x86_64-linux-gnu/libsqlite3.so
+)
+
+add_executable(${PROJECT_NAME}-parcel
+    src/parcel/main.cpp
+    src/parcel/handlers.cpp
+    src/parcel/create_parcel_handler.cpp
+    src/parcel/get_user_parcels_handler.cpp
+    src/common/db.cpp
+    src/common/models.cpp
+    src/auth/jwt_auth_checker.cpp
+    src/auth/jwt_auth_factory.cpp
+)
+
+target_include_directories(${PROJECT_NAME}-parcel PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${SQLITE3_INCLUDE_DIRS}
+)
+
+target_link_libraries(${PROJECT_NAME}-parcel PRIVATE
+    userver::core
+    /usr/lib/x86_64-linux-gnu/libsqlite3.so
+)
+
+add_executable(${PROJECT_NAME}-delivery
+    src/delivery/main.cpp
+    src/delivery/handlers.cpp
+    src/delivery/create_delivery_handler.cpp
+    src/delivery/get_deliveries_handler.cpp
+    src/common/db.cpp
+    src/common/models.cpp
+    src/auth/jwt_auth_checker.cpp
+    src/auth/jwt_auth_factory.cpp
+)
+
+target_include_directories(${PROJECT_NAME}-delivery PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${SQLITE3_INCLUDE_DIRS}
+)
+
+target_link_libraries(${PROJECT_NAME}-delivery PRIVATE
+    userver::core
+    /usr/lib/x86_64-linux-gnu/libsqlite3.so
+)
+
+install(TARGETS ${PROJECT_NAME}-user ${PROJECT_NAME}-parcel ${PROJECT_NAME}-delivery
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    COMPONENT ${PROJECT_NAME}
+)
+
+install(DIRECTORY configs/
+    DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/${PROJECT_NAME}
+    COMPONENT ${PROJECT_NAME}
+)
